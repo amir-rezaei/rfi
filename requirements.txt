@@ -1,0 +1,24 @@
+# requirements.txt
+
+# Core numerical and scientific libraries
+numpy
+scipy
+scikit-image
+scikit-learn
+
+# Dashboard and plotting
+streamlit
+matplotlib
+streamlit-drawable-canvas
+
+# Optimization and Signal Processing
+cvxpy
+pywavelets
+
+# Deep Learning
+torch
+torchvision
+
+# Image and General Utilities
+Pillow
+opencv-python-headless
