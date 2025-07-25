@@ -66,10 +66,19 @@ def display_reconstruction_config() -> Dict[str, Any]:
 
     if method == "Back Projection":
         st.info("Back Projection is a direct method and has no parameters to configure.")
+        with st.expander("How does Back Projection work?", expanded=False):
+            st.markdown(BP_DETAILS, unsafe_allow_html=True)
 
     elif method == "LASSO":
         st.markdown("##### LASSO Parameters")
         st.info("Solves the L1-regularized inverse problem (LASSO), promoting a sparse solution in the wavelet domain.")
+        basis = st.radio(
+            "Sparsifying Basis",
+            ["Pixel", "Wavelet"],
+            index=1,
+            help="Choose the domain where sparsity is applied."
+        )
+        config['sparsifying_basis'] = basis
         c1, c2 = st.columns(2)
         config['alpha'] = c1.number_input(
             "Regularization Strength (α)",
@@ -81,24 +90,27 @@ def display_reconstruction_config() -> Dict[str, Any]:
             min_value=1, max_value=10000, value=200,
             help="Maximum number of iterations for the solver."
         )
-        c1, c2 = st.columns(2)
-        wavelist = pywt.wavelist(kind='discrete')
-        config['wavelet_name'] = c1.selectbox(
-            "Wavelet Family",
-            wavelist,
-            index=wavelist.index('db4') if 'db4' in wavelist else 0,
-            help="The wavelet family used for the sparsifying transform."
-        )
-        try:
-            max_level = pywt.dwtn_max_level(grid_shape, config['wavelet_name'])
-            config['wavelet_level'] = c2.number_input(
-                "Decomposition Level",
-                min_value=1, max_value=max(1, max_level), value=2,
-                help="Wavelet decomposition level. Higher levels mean coarser features."
+        if basis == "Wavelet":
+            c1, c2 = st.columns(2)
+            wavelist = pywt.wavelist(kind='discrete')
+            config['wavelet_name'] = c1.selectbox(
+                "Wavelet Family",
+                wavelist,
+                index=wavelist.index('db4') if 'db4' in wavelist else 0,
+                help="The wavelet family used for the sparsifying transform."
             )
-        except Exception:
-            st.warning("Could not determine max wavelet level for this wavelet. Defaulting to a max of 10.")
-            config['wavelet_level'] = c2.number_input("Decomposition Level", 1, 10, 2)
+            try:
+                max_level = pywt.dwtn_max_level(grid_shape, config['wavelet_name'])
+                config['wavelet_level'] = c2.number_input(
+                    "Decomposition Level",
+                    min_value=1, max_value=max(1, max_level), value=2,
+                    help="Wavelet decomposition level. Higher levels mean coarser features."
+                )
+            except Exception:
+                st.warning("Could not determine max wavelet level for this wavelet. Defaulting to a max of 10.")
+                config['wavelet_level'] = c2.number_input("Decomposition Level", 1, 10, 2)
+            with st.expander("What does the wavelet level do?", expanded=False):
+                st.markdown(WAVELET_LEVEL_HELP)
         solver_options = ["ISTA", "FISTA", "CD", "OMP"]
         config['solver'] = st.selectbox(
             "LASSO Solver",
@@ -106,18 +118,14 @@ def display_reconstruction_config() -> Dict[str, Any]:
             index=solver_options.index("FISTA"),
             help="Select the algorithm for solving the LASSO problem. FISTA is usually fastest."
         )
+        with st.expander("More about LASSO", expanded=False):
+            st.markdown(L1_DETAILS, unsafe_allow_html=True)
 
     elif method == "NN-Prior (OAMP)":
         st.markdown("##### NN-Prior (OAMP) Parameters")
         st.info("Uses a pre-trained VAE as a denoiser within the OAMP algorithm (Image Space Penalty formulation). All parameters must match the trained model.")
         c1, c2 = st.columns([2, 1])
         model_dir = c1.text_input("Model Directory", value="data/models")
-        def _get_available_nn_models(model_dir):
-            try:
-                files = os.listdir(model_dir)
-                return [f for f in files if f.endswith('.pt') or f.endswith('.pth')]
-            except Exception:
-                return ["<no models found>"]
         models = _get_available_nn_models(model_dir)
         model_file = c1.selectbox("Select Trained Model", models)
         if model_file and model_file not in ["<no models found>"]:
@@ -142,5 +150,7 @@ def display_reconstruction_config() -> Dict[str, Any]:
             "Damping Factor", min_value=0.1, max_value=1.0, value=0.7, format="%.2f", key="oamp_damping",
             help="Damping factor for OAMP updates to improve stability."
         )
+        with st.expander("NN-Prior and OAMP details", expanded=False):
+            st.markdown(NN_DETAILS, unsafe_allow_html=True)
 
     return config
